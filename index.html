@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Micro:bit Stereo Dual Servo Control</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fafafa;
+    }
+
+    h1 {
+      margin-bottom: 25px;
+    }
+
+    button,
+    input[type="file"] {
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 15px;
+      margin-right: 10px;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 15px;
+      margin-bottom: 25px;
+    }
+
+    audio::-webkit-media-controls-volume-slider,
+    audio::-webkit-media-controls-mute-button {
+      display: none;
+    }
+
+    .section {
+      background: white;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .character-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .character-card {
+      border: 2px solid #ddd;
+      border-radius: 14px;
+      padding: 18px;
+      background: #fdfdfd;
+    }
+
+    .channel-title {
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .mouth-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .mouth-icon {
+      width: 90px;
+      height: 90px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.05s linear;
+    }
+
+    .slider-group {
+      margin-top: 20px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 18px;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      min-height: 80px;
+      white-space: pre-line;
+    }
+
+    .value {
+      font-weight: bold;
+      min-width: 70px;
+      text-align: center;
+    }
+
+    h3 {
+      margin-top: 0;
+    }
+
+    @media (max-width: 900px) {
+      .character-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Micro:bit Stereo Dual Servo Control</h1>
+
+  <!-- TOP CONTROLS -->
+  <div class="section">
+    <button id="connectBleBtn">Connect via Bluetooth</button>
+    <button id="connectSerialBtn">Connect via Serial</button>
+    <input type="file" id="audioFile" accept="audio/*">
+    <audio id="audioPlayer" controls controlsList="noplaybackrate nodownload"></audio>
+  </div>
+
+  <!-- CHARACTER GRID -->
+  <div class="character-grid">
+
+    <!-- LEFT CHANNEL -->
+    <div class="character-card">
+      <div class="channel-title">LEFT CHANNEL</div>
+
+      <!-- LIVE POSITION -->
+      <div class="section">
+        <div class="mouth-row">
+          <div id="leftLiveMouth" class="mouth-icon">
+            <svg width="90" height="90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="45" fill="#FFD966" stroke="#333" stroke-width="3"/>
+              <circle cx="35" cy="38" r="4" fill="#333"/>
+              <circle cx="65" cy="38" r="4" fill="#333"/>
+              <ellipse id="leftMouthShape" cx="50" cy="65" rx="14" ry="2" fill="#222"/>
+            </svg>
+          </div>
+          <div style="flex:1;">
+            <div style="text-align:center;font-size:18px;margin-bottom:10px;font-weight:bold;">
+              <span id="leftPercent">0</span>% Open
+            </div>
+            <div class="slider-label">
+              <span>Live Position</span>
+              <span class="value"><span id="leftServoValue">45</span>°</span>
+            </div>
+            <input type="range" id="leftServoSlider" min="0" max="180" value="45">
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPRESSIVENESS -->
+      <div class="section">
+        <h3>Expressiveness</h3>
+        <div class="slider-label">
+          <span>More Closed</span>
+          <span class="value"><span id="leftGammaValue">0.0</span></span>
+          <span>More Open</span>
+        </div>
+        <input type="range" id="leftGammaSlider" min="0" max="100" value="50">
+      </div>
+
+      <!-- CALIBRATION -->
+      <div class="section">
+        <h3>Mouth Calibration</h3>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>Closed Position</span>
+            <span class="value"><span id="leftClosedValue">45</span>°</span>
+          </div>
+          <input type="range" id="leftClosedSlider" min="0" max="180" value="45">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>Open Position</span>
+            <span class="value"><span id="leftOpenValue">135</span>°</span>
+          </div>
+          <input type="range" id="leftOpenSlider" min="0" max="180" value="135">
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT CHANNEL -->
+    <div class="character-card">
+      <div class="channel-title">RIGHT CHANNEL</div>
+
+      <!-- LIVE POSITION -->
+      <div class="section">
+        <div class="mouth-row">
+          <div id="rightLiveMouth" class="mouth-icon">
+            <svg width="90" height="90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="45" fill="#FFD966" stroke="#333" stroke-width="3"/>
+              <circle cx="35" cy="38" r="4" fill="#333"/>
+              <circle cx="65" cy="38" r="4" fill="#333"/>
+              <ellipse id="rightMouthShape" cx="50" cy="65" rx="14" ry="2" fill="#222"/>
+            </svg>
+          </div>
+          <div style="flex:1;">
+            <div style="text-align:center;font-size:18px;margin-bottom:10px;font-weight:bold;">
+              <span id="rightPercent">0</span>% Open
+            </div>
+            <div class="slider-label">
+              <span>Live Position</span>
+              <span class="value"><span id="rightServoValue">45</span>°</span>
+            </div>
+            <input type="range" id="rightServoSlider" min="0" max="180" value="45">
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPRESSIVENESS -->
+      <div class="section">
+        <h3>Expressiveness</h3>
+        <div class="slider-label">
+          <span>More Closed</span>
+          <span class="value"><span id="rightGammaValue">0.0</span></span>
+          <span>More Open</span>
+        </div>
+        <input type="range" id="rightGammaSlider" min="0" max="100" value="50">
+      </div>
+
+      <!-- CALIBRATION -->
+      <div class="section">
+        <h3>Mouth Calibration</h3>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>Closed Position</span>
+            <span class="value"><span id="rightClosedValue">45</span>°</span>
+          </div>
+          <input type="range" id="rightClosedSlider" min="0" max="180" value="45">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>Open Position</span>
+            <span class="value"><span id="rightOpenValue">135</span>°</span>
+          </div>
+          <input type="range" id="rightOpenSlider" min="0" max="180" value="135">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STATUS -->
+  <div class="status" id="status">Not connected</div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const audio = document.getElementById('audioPlayer');
+      audio.volume = 1.0;
+      audio.addEventListener('volumechange', () => { audio.volume = 1.0; });
+    });
+
+    // BLE UUIDs
+    const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+    const UART_RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+    // AUDIO NORMALIZATION
+    const AUDIO_NORMALIZATION = 4;
+
+    let rxCharacteristic = null;
+    let serialPort = null;
+    let writer = null;
+
+    let bleBusy = false;
+    let pendingLeft = null;
+    let pendingRight = null;
+
+    let audioContext = null;
+    let splitter = null;
+    let leftAnalyser = null;
+    let rightAnalyser = null;
+    let leftData = null;
+    let rightData = null;
+    let sourceNode = null;
+
+    // CALIBRATION
+    let leftClosed = 45;
+    let leftOpen = 135;
+    let rightClosed = 45;
+    let rightOpen = 135;
+
+    // EXPRESSIVENESS
+    let leftGamma = 1.0;
+    let rightGamma = 1.0;
+
+    // UI elements
+    const connectBleBtn = document.getElementById('connectBleBtn');
+    const connectSerialBtn = document.getElementById('connectSerialBtn');
+    const audioFile = document.getElementById('audioFile');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const status = document.getElementById('status');
+
+    // LEFT UI
+    const leftServoSlider = document.getElementById('leftServoSlider');
+    const leftServoValue = document.getElementById('leftServoValue');
+    const leftClosedSlider = document.getElementById('leftClosedSlider');
+    const leftClosedValue = document.getElementById('leftClosedValue');
+    const leftOpenSlider = document.getElementById('leftOpenSlider');
+    const leftOpenValue = document.getElementById('leftOpenValue');
+    const leftPercent = document.getElementById('leftPercent');
+    const leftMouthShape = document.getElementById('leftMouthShape');
+    const leftLiveMouth = document.getElementById('leftLiveMouth');
+    const leftGammaSlider = document.getElementById('leftGammaSlider');
+    const leftGammaValue = document.getElementById('leftGammaValue');
+
+    // RIGHT UI
+    const rightServoSlider = document.getElementById('rightServoSlider');
+    const rightServoValue = document.getElementById('rightServoValue');
+    const rightClosedSlider = document.getElementById('rightClosedSlider');
+    const rightClosedValue = document.getElementById('rightClosedValue');
+    const rightOpenSlider = document.getElementById('rightOpenSlider');
+    const rightOpenValue = document.getElementById('rightOpenValue');
+    const rightPercent = document.getElementById('rightPercent');
+    const rightMouthShape = document.getElementById('rightMouthShape');
+    const rightLiveMouth = document.getElementById('rightLiveMouth');
+    const rightGammaSlider = document.getElementById('rightGammaSlider');
+    const rightGammaValue = document.getElementById('rightGammaValue');
+
+    function sliderToGamma(sliderValue) {
+      const minGamma = 0.1;
+      const maxGamma = 10.0;
+      const normalized = 1 - (sliderValue / 100);
+      const gamma = minGamma * Math.pow(maxGamma / minGamma, normalized);
+      return gamma;
+    }
+
+    connectBleBtn.addEventListener('click', async () => {
+      try {
+        status.innerHTML = 'Searching for Micro:bit devices via Bluetooth...';
+
+        device = await navigator.bluetooth.requestDevice({
+          filters: [
+            { namePrefix: 'BBC micro:bit' },
+            { namePrefix: 'micro:bit' }
+          ],
+          optionalServices: [UART_SERVICE_UUID]
+        });
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(UART_SERVICE_UUID);
+        rxCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
+
+        status.innerHTML = `✅ Connected via Bluetooth\nDevice: ${device.name || 'Unnamed Device'}`;
+      } catch (error) {
+        console.error(error);
+        status.innerHTML = `❌ Connection Error\n${error.message}`;
+      }
+    });
+
+    connectSerialBtn.addEventListener('click', async () => {
+      try {
+        status.innerHTML = 'Searching for Micro:bit devices via Serial...';
+
+        serialPort = await navigator.serial.requestPort();
+        await serialPort.open({ baudRate: 115200 });
+        writer = serialPort.writable.getWriter();
+
+        status.innerHTML = `✅ Connected via Serial\nDevice: ${serialPort.getInfo().usbProductId}`;
+      } catch (error) {
+        console.error(error);
+        status.innerHTML = `❌ Connection Error\n${error.message}`;
+      }
+    });
+
+    function sendServo(channel, angle) {
+      if (!rxCharacteristic && !writer) return;
+
+      if (channel === 'left') {
+        pendingLeft = angle;
+      } else {
+        pendingRight = angle;
+      }
+
+      processBle();
+      processSerial();
+    }
+
+    async function processBle() {
+      if (bleBusy || !rxCharacteristic) return;
+      bleBusy = true;
+
+      try {
+        if (pendingLeft !== null) {
+          const command = `L${Math.floor(pendingLeft)}\n`;
+          pendingLeft = null;
+          await rxCharacteristic.writeValueWithoutResponse(new TextEncoder().encode(command));
+        }
+
+        if (pendingRight !== null) {
+          const command = `R${Math.floor(pendingRight)}\n`;
+          pendingRight = null;
+          await rxCharacteristic.writeValueWithoutResponse(new TextEncoder().encode(command));
+        }
+      } catch (error) {
+        console.error(error);
+        status.innerHTML = `❌ BLE Error\n${error.message}`;
+      }
+
+      bleBusy = false;
+
+      if (pendingLeft !== null || pendingRight !== null) {
+        processBle();
+      }
+    }
+
+    async function sendSerial(command) {
+      if (!writer) return;
+      try {
+        await writer.write(new TextEncoder().encode(command));
+      } catch (error) {
+        console.error(error);
+        status.innerHTML = `❌ Serial Error\n${error.message}`;
+      }
+    }
+
+    async function processSerial() {
+      if (bleBusy || !writer) return;
+      bleBusy = true;
+
+      try {
+        if (pendingLeft !== null) {
+          const command = `L${Math.floor(pendingLeft)}\n`;
+          pendingLeft = null;
+          await sendSerial(command);
+        }
+
+        if (pendingRight !== null) {
+          const command = `R${Math.floor(pendingRight)}\n`;
+          pendingRight = null;
+          await sendSerial(command);
+        }
+      } catch (error) {
+        console.error(error);
+        status.innerHTML = `❌ Serial Error\n${error.message}`;
+      }
+
+      bleBusy = false;
+
+      if (pendingLeft !== null || pendingRight !== null) {
+        processSerial();
+      }
+    }
+
+    function updateMouth(side, angle, closed, open) {
+      let openness = (angle - closed) / (open - closed);
+      openness = Math.max(0, Math.min(1, openness));
+      const percent = Math.floor(openness * 100);
+
+      const mouthShape = side === 'left' ? leftMouthShape : rightMouthShape;
+      const mouthPercent = side === 'left' ? leftPercent : rightPercent;
+      const liveMouth = side === 'left' ? leftLiveMouth : rightLiveMouth;
+
+      mouthPercent.textContent = percent;
+      const mouthHeight = 2 + openness * 18;
+      const mouthWidth = 14 - openness * 2;
+
+      mouthShape.setAttribute('ry', mouthHeight);
+      mouthShape.setAttribute('rx', mouthWidth);
+
+      const scale = 1 + openness * 0.08;
+      liveMouth.style.transform = `scale(${scale})`;
+    }
+
+    // Event listeners for sliders
+    leftServoSlider.addEventListener('input', () => {
+      const value = parseInt(leftServoSlider.value);
+      leftServoValue.textContent = value;
+      updateMouth('left', value, leftClosed, leftOpen);
+      sendServo('left', value);
+    });
+
+    rightServoSlider.addEventListener('input', () => {
+      const value = parseInt(rightServoSlider.value);
+      rightServoValue.textContent = value;
+      updateMouth('right', value, rightClosed, rightOpen);
+      sendServo('right', value);
+    });
+
+    leftGammaSlider.addEventListener('input', () => {
+      leftGamma = sliderToGamma(parseInt(leftGammaSlider.value));
+      leftGammaValue.textContent = Math.log10(leftGamma).toFixed(1);
+    });
+
+    rightGammaSlider.addEventListener('input', () => {
+      rightGamma = sliderToGamma(parseInt(rightGammaSlider.value));
+      rightGammaValue.textContent = Math.log10(rightGamma).toFixed(1);
+    });
+
+    leftClosedSlider.addEventListener('input', () => {
+      leftClosed = parseInt(leftClosedSlider.value);
+      leftClosedValue.textContent = leftClosed;
+      leftServoSlider.value = leftClosed;
+      leftServoValue.textContent = leftClosed;
+      updateMouth('left', leftClosed, leftClosed, leftOpen);
+      sendServo('left', leftClosed);
+    });
+
+    leftOpenSlider.addEventListener('input', () => {
+      leftOpen = parseInt(leftOpenSlider.value);
+      leftOpenValue.textContent = leftOpen;
+      leftServoSlider.value = leftOpen;
+      leftServoValue.textContent = leftOpen;
+      updateMouth('left', leftOpen, leftClosed, leftOpen);
+      sendServo('left', leftOpen);
+    });
+
+    rightClosedSlider.addEventListener('input', () => {
+      rightClosed = parseInt(rightClosedSlider.value);
+      rightClosedValue.textContent = rightClosed;
+      rightServoSlider.value = rightClosed;
+      rightServoValue.textContent = rightClosed;
+      updateMouth('right', rightClosed, rightClosed, rightOpen);
+      sendServo('right', rightClosed);
+    });
+
+    rightOpenSlider.addEventListener('input', () => {
+      rightOpen = parseInt(rightOpenSlider.value);
+      rightOpenValue.textContent = rightOpen;
+      rightServoSlider.value = rightOpen;
+      rightServoValue.textContent = rightOpen;
+      updateMouth('right', rightOpen, rightClosed, rightOpen);
+      sendServo('right', rightOpen);
+    });
+
+    // AUDIO FILE
+    audioFile.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      audioPlayer.src = URL.createObjectURL(file);
+      status.innerHTML = `✅ Audio Loaded\n${file.name}`;
+    });
+
+    // START AUDIO ANALYSIS WHEN PLAYING
+    audioPlayer.addEventListener('play', async () => {
+      try {
+        if (!audioContext) {
+          audioContext = new AudioContext();
+          sourceNode = audioContext.createMediaElementSource(audioPlayer);
+          splitter = audioContext.createChannelSplitter(2);
+
+          leftAnalyser = audioContext.createAnalyser();
+          rightAnalyser = audioContext.createAnalyser();
+
+          leftAnalyser.fftSize = 512;
+          rightAnalyser.fftSize = 512;
+
+          leftData = new Uint8Array(leftAnalyser.fftSize);
+          rightData = new Uint8Array(rightAnalyser.fftSize);
+
+          sourceNode.connect(splitter);
+          splitter.connect(leftAnalyser, 0);
+          splitter.connect(rightAnalyser, 1);
+          sourceNode.connect(audioContext.destination);
+        }
+
+        await audioContext.resume();
+        animate();
+      } catch (error) {
+        console.error(error);
+      }
+    });
+
+    // RMS
+    function calculateRMS(data) {
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const sample = (data[i] - 128) / 128;
+        sum += sample * sample;
+      }
+      return Math.sqrt(sum / data.length);
+    }
+
+    // ANIMATION LOOP
+    function animate() {
+      if (audioPlayer.paused || audioPlayer.ended) return;
+
+      leftAnalyser.getByteTimeDomainData(leftData);
+      rightAnalyser.getByteTimeDomainData(rightData);
+
+      const leftRMS = calculateRMS(leftData);
+      const rightRMS = calculateRMS(rightData);
+
+      const leftLinear = Math.max(0, Math.min(1, leftRMS * AUDIO_NORMALIZATION));
+      const rightLinear = Math.max(0, Math.min(1, rightRMS * AUDIO_NORMALIZATION));
+
+      const leftLevel = Math.pow(leftLinear, leftGamma);
+      const rightLevel = Math.pow(rightLinear, rightGamma);
+
+      const leftAngle = Math.floor(leftClosed + leftLevel * (leftOpen - leftClosed));
+      const rightAngle = Math.floor(rightClosed + rightLevel * (rightOpen - rightClosed));
+
+      // LEFT
+      leftServoSlider.value = leftAngle;
+      leftServoValue.textContent = leftAngle;
+      updateMouth('left', leftAngle, leftClosed, leftOpen);
+      sendServo('left', leftAngle);
+
+      // RIGHT
+      rightServoSlider.value = rightAngle;
+      rightServoValue.textContent = rightAngle;
+      updateMouth('right', rightAngle, rightClosed, rightOpen);
+      sendServo('right', rightAngle);
+
+      requestAnimationFrame(animate);
+    }
+
+    // INITIALIZE
+    leftGamma = sliderToGamma(50);
+    rightGamma = sliderToGamma(50);
+    updateMouth('left', leftClosed, leftClosed, leftOpen);
+    updateMouth('right', rightClosed, rightClosed, rightOpen);
+  </script>
+</body>
+</html>
